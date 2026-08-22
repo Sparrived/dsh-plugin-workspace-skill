@@ -1,0 +1,13 @@
+# Bundle patch list for dsh-plugin-workspace-skill.
+# Declared in package.json as dsh.bundle.patch and applied by the dsh loader
+# as one profile layer when installed via `dsh plugin --profile <name> add`.
+# A top-level YAML array of loader patch entries:
+- id: workspace-skill
+  name: dsh-plugin-workspace-skill
+  # Optional configuration (validated defaults live in lib/index.js):
+  # config:
+  #   providerName: workspace-isolated
+  #   rootDir: .dsh/skills
+  #   source: workspace
+  #   rank: 700
+  #   registerGuideSkill: true

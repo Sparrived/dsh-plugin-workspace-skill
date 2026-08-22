@@ -1,12 +1,26 @@
 {
   "name": "dsh-plugin-workspace-skill",
-  "version": "0.1.0",
   "description": "DSH Cordis plugin: a skill-create authoring guide plus workspace-level skill isolation for .dsh/skills.",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sparrived/dsh-plugin-workspace-skill.git"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
   "type": "module",
   "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
   "files": [
     "lib",
     "skills",
+    "cordis.patch.yml",
     "README.md"
   ],
   "keywords": [

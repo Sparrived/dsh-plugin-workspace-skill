@@ -19,9 +19,26 @@
 
 ## 安装
 
-### 方式一：作为 Cordis 插件行（推荐）
+### 方式一：`dsh plugin add`（官方流程，推荐）
 
-把本仓库放入部署可解析的位置（npm 发布后直接 `npm i dsh-plugin-workspace-skill`，或用 `file:` 依赖 / 复制进 `node_modules`），然后在宿主 `cordis.yml` 或自定义 agent preset 的组合里加一行：
+本包在 `package.json` 里声明了 `dsh.bundle.patch: ./cordis.patch.yml`（补丁清单就是下面的插件行），因此能被 dsh 识别为一个 profile 层：
+
+```bash
+# 从 npm 安装（发布后）
+dsh plugin --profile web add dsh-plugin-workspace-skill
+
+# 或直接从 GitHub 安装
+dsh plugin --profile web add github:Sparrived/dsh-plugin-workspace-skill
+
+# 或从本地 checkout 安装（相对路径 spec 会被锚定为绝对路径）
+dsh plugin --profile web add D:\Code\dsh-plugin-workspace-skill
+```
+
+`dsh plugin` 会在 profile 目录（`$DSH_HOME/profiles/<name>`）内转发 pnpm 完成安装，并把声明了 `dsh.bundle` 的依赖自动写入该 profile 的 `dsh.profile.bundles` 层列表。本包是纯 ESM、无构建步骤，无需 pnpm `allowBuilds` 放行。启动后可用 `dsh --profile web --dump-config` 确认 `workspace-skill` 行已进入组合树。
+
+### 方式二：手动加插件行
+
+不经过 bundle 机制时，直接在宿主 `cordis.yml` 或自定义 agent preset 的组合里写同一行：
 
 ```yaml
 - id: workspace-skill
@@ -45,11 +62,11 @@
 
 插件声明 `inject: ['skills', 'fs', 'workspaceRegistry']`；停止或卸载时，provider 与运行时技能随 Cordis Fiber 一并撤销。
 
-### 方式二：动态插件（临时试用）
+### 方式三：动态插件（临时试用）
 
 在 DSH 会话里用动态 Cordis 插件加载 `lib/index.js` 的等价代码（`cordis_define` → `cordis_run`），无需改任何组合文件。注意动态插件只存活于当前进程。
 
-### 方式三：只要指导技能本身
+### 方式四：只要指导技能本身
 
 不需要隔离 provider 的话，直接把 [`skills/skill-create/SKILL.md`](skills/skill-create/SKILL.md) 复制到用户级 `~/.dsh/skills/skill-create/SKILL.md` 或某个项目的 `.dsh/skills/skill-create/`，DSH 内置文件系统 provider 即可发现它。
 
