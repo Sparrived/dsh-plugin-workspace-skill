@@ -1,0 +1,23 @@
+{
+  "name": "dsh-plugin-workspace-skill",
+  "version": "0.1.0",
+  "description": "DSH Cordis plugin: a skill-create authoring guide plus workspace-level skill isolation for .dsh/skills.",
+  "type": "module",
+  "main": "lib/index.js",
+  "files": [
+    "lib",
+    "skills",
+    "README.md"
+  ],
+  "keywords": [
+    "dsh",
+    "cordis",
+    "cordis-plugin",
+    "agent-skills",
+    "skill-create"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
