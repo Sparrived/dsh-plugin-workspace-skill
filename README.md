@@ -1,5 +1,9 @@
 # dsh-plugin-workspace-skill
 
+[中文](#中文) | [English](#english)
+
+<a id="中文"></a>
+
 一个 [DSH](https://www.npmjs.com/package/@deepseek-ai/dsh) Cordis 插件，提供两个能力：
 
 1. **`skill-create` 技能** —— 指导 Agent 在当前工作区创建、编写、审查和验证可复用 Skill（`SKILL.md` 格式规范、正文结构、发布前验证清单）。设计参考了 OpenAI Codex 的 [`skill-creator`](https://github.com/openai/skills/blob/main/skills/.system/skill-creator/SKILL.md) 与 [Skills 文档](https://github.com/openai/codex/blob/main/docs/skills.md)，并结合 DSH 的技能注册机制做了适配。
@@ -108,6 +112,119 @@ whenToUse: Use when reviewing a public API or endpoint change.
 2. 创建 `.dsh/skills/hello-isolation/SKILL.md`，确认它只在当前工作区可见，换到另一个工作区的会话后不可见；
 3. 在用户级目录放置同名技能，确认工作区版本胜出；
 4. 停用插件后确认以上技能全部消失（无残留副作用）。
+
+---
+
+## English
+
+A [DSH](https://www.npmjs.com/package/@deepseek-ai/dsh) Cordis plugin with two capabilities:
+
+1. **The `skill-create` skill** — guides an agent through creating, writing, reviewing, and validating reusable skills in the current workspace (`SKILL.md` format rules, body structure, pre-publish checklist). Inspired by OpenAI Codex's [`skill-creator`](https://github.com/openai/skills/blob/main/skills/.system/skill-creator/SKILL.md) and its [Skills docs](https://github.com/openai/codex/blob/main/docs/skills.md), adapted to DSH's skill registration mechanism.
+2. **Workspace-level skill isolation** — a `ctx.skills` provider that treats `<workspace>/.dsh/skills/` as a skill source visible **only to sessions inside that workspace**. A project's private skills never leak into other workspaces, and can override global skills by name.
+
+## How workspace isolation works
+
+On every skill discovery, the provider:
+
+1. Finds the **deepest registered workspace containing the caller's `cwd`** in `workspaceRegistry` (canonical comparison via `fs.contains`, tolerant of Windows path separators).
+2. Scans `.dsh/skills/` under that workspace root, supporting two layouts:
+   - `.dsh/skills/<skill-name>/SKILL.md` — directory bundle with optional `references/`, `scripts/`, `assets/`;
+   - `.dsh/skills/<skill-name>.md` — flat single-file layout.
+3. Parses the YAML frontmatter (`name` / `description` / `whenToUse` / `disable-model-invocation` / `user-invocable`) and registers candidates with `rank: 700`.
+
+Precedence: **workspace skills > user-level and bundled sources**. Same-named workspace skills win, so a project can safely override global ones; when `cwd` belongs to no registered workspace this provider contributes nothing.
+
+## Install
+
+### Option 1: `dsh plugin add` (official flow, recommended)
+
+The package declares `dsh.bundle.patch: ./cordis.patch.yml` in `package.json` (the patch list is the plugin row below), so dsh recognizes it as a profile layer:
+
+```bash
+# from npm (once published)
+dsh plugin --profile web add dsh-plugin-workspace-skill
+
+# or straight from GitHub
+dsh plugin --profile web add github:Sparrived/dsh-plugin-workspace-skill
+
+# or from a local checkout (relative path specs are anchored to absolute paths)
+dsh plugin --profile web add D:\Code\dsh-plugin-workspace-skill
+```
+
+`dsh plugin` forwards to pnpm inside the profile directory (`$DSH_HOME/profiles/<name>`), then automatically adds any dependency declaring `dsh.bundle` to that profile's `dsh.profile.bundles` layer list. This package is pure ESM with no build step, so no pnpm `allowBuilds` approval is needed. After booting, verify the `workspace-skill` row landed in the composed tree with `dsh --profile web --dump-config`.
+
+### Option 2: add the plugin row manually
+
+Without the bundle mechanism, write the same row directly in a host `cordis.yml` or a custom agent preset composition:
+
+```yaml
+- id: workspace-skill
+  name: dsh-plugin-workspace-skill
+  # Optional configuration:
+  # config:
+  #   providerName: workspace-isolated
+  #   rootDir: .dsh/skills
+  #   source: workspace
+  #   rank: 700
+  #   registerGuideSkill: true
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `providerName` | `workspace-isolated` | Provider name |
+| `rootDir` | `.dsh/skills` | Skill directory relative to the workspace root |
+| `source` | `workspace` | Source tag on candidates |
+| `rank` | `700` | Sort precedence (higher wins) |
+| `registerGuideSkill` | `true` | Also register the `skill-create` guide skill |
+
+The plugin declares `inject: ['skills', 'fs', 'workspaceRegistry']`; on stop or uninstall the provider and the runtime skill unwind with the Cordis Fiber.
+
+### Option 3: dynamic plugin (quick trial)
+
+Load equivalent code via a dynamic Cordis plugin inside a DSH session (`cordis_define` → `cordis_run`) without touching any composition file. Note dynamic plugins only live for the current process.
+
+### Option 4: just the guide skill
+
+If you don't need the isolation provider, copy [`skills/skill-create/SKILL.md`](skills/skill-create/SKILL.md) into user-level `~/.dsh/skills/skill-create/SKILL.md` or a project's `.dsh/skills/skill-create/` — DSH's built-in filesystem provider discovers it.
+
+## Authoring a workspace skill
+
+```
+<workspace>/
+└── .dsh/
+    └── skills/
+        └── api-review/
+            ├── SKILL.md
+            ├── references/
+            │   └── checklist.md
+            └── scripts/
+                └── check-breaking.sh
+```
+
+```markdown
+---
+name: api-review
+description: Review API changes for compatibility, security, and test coverage.
+whenToUse: Use when reviewing a public API or endpoint change.
+---
+
+# API Review
+
+Follow the steps below...
+```
+
+Key points:
+
+- `name` must be lowercase kebab-case and match the directory name;
+- `description` states the capability and when it applies;
+- keep resources next to `SKILL.md` and reference them with relative paths.
+
+## Verify
+
+1. Start a session inside the target workspace and confirm `skill-create` appears in the skill catalog;
+2. Create `.dsh/skills/hello-isolation/SKILL.md`, confirm it is visible only in this workspace and invisible from another workspace's session;
+3. Place a same-named skill at user level and confirm the workspace version wins;
+4. Stop the plugin and confirm all of the above disappear (no residual side effects).
 
 ## License
 
